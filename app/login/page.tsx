@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,25 +16,28 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ password }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
-        router.push("/");
-        router.refresh();
+        // Full navigation so browser immediately commits and sends the cookie to middleware
+        window.location.assign("/");
       } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Incorrect password. Please try again.");
+        setError(data?.error || data?.message || "Password salah");
+        setLoading(false);
       }
     } catch {
-      setError("Network error. Please check your connection.");
-    } finally {
+      setError("Gagal terhubung ke server. Cek koneksi Wi-Fi / Firewall laptop.");
       setLoading(false);
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4"
+    <main
+      className="flex min-h-screen items-center justify-center px-4"
       style={{ backgroundColor: "var(--color-page-bg)" }}
     >
       <div
@@ -49,7 +50,7 @@ export default function LoginPage() {
         {/* Logo + Title */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-white font-bold text-lg select-none"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-white font-bold text-lg select-none shadow-xs"
             style={{ backgroundColor: "var(--color-accent)" }}
           >
             B
@@ -92,23 +93,21 @@ export default function LoginPage() {
               className="w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition-shadow focus:ring-2"
               style={{
                 backgroundColor: "var(--color-page-bg)",
-                borderColor: error
-                  ? "#ef4444"
-                  : "var(--color-border)",
+                borderColor: error ? "#ef4444" : "var(--color-border)",
                 color: "var(--color-text-primary)",
                 // @ts-expect-error CSS variable
                 "--tw-ring-color": "var(--color-accent)",
               }}
             />
             {error && (
-              <p className="text-xs font-medium text-red-500">{error}</p>
+              <p className="text-xs font-medium text-red-500 mt-1">{error}</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="mt-1 w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-1 w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60 shadow-xs cursor-pointer active:opacity-80 touch-manipulation"
             style={{ backgroundColor: "var(--color-accent)" }}
           >
             {loading ? "Unlocking…" : "Unlock"}

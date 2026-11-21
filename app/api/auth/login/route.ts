@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  constantTimeEqual,
-  createToken,
-  COOKIE_NAME,
-  TOKEN_MAX_AGE_SECONDS,
-} from "@/lib/auth";
+import { createToken, AUTH_COOKIE, TOKEN_MAX_AGE_SECONDS } from "@/lib/auth";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let body: { password?: string };
@@ -15,32 +10,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { password } = body;
-  const appPassword = process.env.APP_PASSWORD;
+  const password = (body?.password || "").trim();
+  const expected = (process.env.APP_PASSWORD || "").trim();
 
-  if (!appPassword) {
-    console.error("APP_PASSWORD environment variable is not set.");
+  if (!expected) {
+    console.error("[Login API] APP_PASSWORD environment variable is not configured.");
     return NextResponse.json(
-      { error: "Server misconfiguration" },
+      { error: "Server auth env variables not configured" },
       { status: 500 }
     );
   }
 
-  if (!password || !constantTimeEqual(password, appPassword)) {
+  if (!password || password !== expected) {
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
 
-  const token = await createToken();
+  const token = createToken();
+  const response = NextResponse.json({ ok: true, success: true }, { status: 200 });
 
-  const isProduction = process.env.NODE_ENV === "production";
-
-  const response = NextResponse.json({ success: true }, { status: 200 });
-  response.cookies.set(COOKIE_NAME, token, {
+  response.cookies.set(AUTH_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: isProduction,
-    maxAge: TOKEN_MAX_AGE_SECONDS,
     path: "/",
+    maxAge: TOKEN_MAX_AGE_SECONDS, // 30 days = 2,592,000 seconds
+    secure: process.env.VERCEL === "1",
   });
 
   return response;

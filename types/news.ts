@@ -21,6 +21,7 @@ export interface NewsSource {
 export interface NewsItem {
   id: string;
   category: string;
+  topic?: string;
   summary: string;
   sources: NewsSource[];
 }

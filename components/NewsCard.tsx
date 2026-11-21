@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import type { NewsItem } from "@/types/news";
 import { NewsSummaryText } from "./NewsSummaryText";
 
@@ -16,10 +17,10 @@ export function NewsCard({ item }: NewsCardProps) {
         borderColor: "var(--color-border)",
       }}
     >
-      {/* 1. Header: Category Badge */}
-      <div className="mb-3 flex items-center justify-between">
+      {/* 1. Header: Category & Topic Badges */}
+      <div className="mb-3.5 flex flex-wrap items-center gap-2">
         <span
-          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider"
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
           style={{
             backgroundColor: "var(--color-accent-subtle)",
             color: "var(--color-accent)",
@@ -27,6 +28,20 @@ export function NewsCard({ item }: NewsCardProps) {
         >
           {item.category}
         </span>
+
+        {item.topic && (
+          <span
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium border max-w-full truncate"
+            style={{
+              borderColor: "var(--color-border)",
+              color: "var(--color-text-secondary)",
+              backgroundColor: "var(--color-page-bg)",
+            }}
+            title={item.topic}
+          >
+            {item.topic}
+          </span>
+        )}
       </div>
 
       {/* 2. Body: Summary Text */}
@@ -43,7 +58,7 @@ export function NewsCard({ item }: NewsCardProps) {
         }}
       >
         <div className="flex items-center gap-1.5 truncate">
-          <span className="font-medium">
+          <span className="font-medium truncate">
             {hasSources
               ? item.sources.map((s) => s.name).join(", ")
               : "Wikipedia Current Events"}
@@ -59,11 +74,11 @@ export function NewsCard({ item }: NewsCardProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 title={`Open source: ${source.name}`}
-                className="inline-flex items-center gap-1 font-medium hover:underline transition-colors"
+                className="inline-flex items-center gap-0.5 font-medium hover:underline transition-colors"
                 style={{ color: "var(--color-accent)" }}
               >
                 <span>{item.sources.length === 1 ? "Source" : `Source ${idx + 1}`}</span>
-                <span aria-hidden="true">↗</span>
+                <ArrowUpRight className="h-3 w-3" />
               </a>
             ))
           ) : (

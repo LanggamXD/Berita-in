@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import type { DailyNewsResponse, AvailableDateEntry } from "@/types/news";
 import { ReadingProgressBar } from "./ReadingProgressBar";
 import { Header } from "./Header";
@@ -15,10 +14,9 @@ import { ErrorBanner } from "./ErrorBanner";
 
 const THEME_STORAGE_KEY = "beritain_theme";
 const CATEGORY_STORAGE_KEY = "beritain_categories";
+const FILTER_VISIBILITY_KEY = "beritain_filter_visibility";
 
 export function Dashboard() {
-  const router = useRouter();
-
   // ── State ──────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [activeDate, setActiveDate] = useState<string>("");
@@ -28,9 +26,10 @@ export function Dashboard() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState<boolean>(true);
   const [logoutLoading, setLogoutLoading] = useState<boolean>(false);
 
-  // ── Initialize Theme & Dates ───────────────────────────────────────────────
+  // ── Initialize Theme, Dates & Preferences ──────────────────────────────────
   useEffect(() => {
     // 1. Theme sync with localStorage / system preference
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as "light" | "dark" | null;
@@ -78,14 +77,18 @@ export function Dashboard() {
     setAvailableDates(dates);
     setActiveDate(todayIso);
 
-    // 3. Load saved category preferences
+    // 3. Load saved category & filter visibility preferences
     try {
       const savedCats = localStorage.getItem(CATEGORY_STORAGE_KEY);
       if (savedCats) {
         setSelectedCategories(JSON.parse(savedCats));
       }
+      const savedVisibility = localStorage.getItem(FILTER_VISIBILITY_KEY);
+      if (savedVisibility !== null) {
+        setShowFilters(savedVisibility === "true");
+      }
     } catch {
-      // ignore
+      // ignore storage errors
     }
   }, []);
 
@@ -100,6 +103,19 @@ export function Dashboard() {
       }
       try {
         localStorage.setItem(THEME_STORAGE_KEY, next);
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  // ── Toggle Filters Visibility ──────────────────────────────────────────────
+  const handleToggleFilters = useCallback(() => {
+    setShowFilters((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(FILTER_VISIBILITY_KEY, String(next));
       } catch {
         // ignore
       }
@@ -130,7 +146,6 @@ export function Dashboard() {
           setError(json?.message || `Error: HTTP ${res.status}`);
         } else {
           setData(json as DailyNewsResponse);
-          // If availableDates returned from server, update them
           if (json.availableDates && json.availableDates.length > 0) {
             setAvailableDates(json.availableDates);
           }
@@ -193,77 +208,99 @@ export function Dashboard() {
     setLogoutLoading(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/login");
-      router.refresh();
+      window.location.assign("/login");
     } catch {
-      router.push("/login");
+      window.location.assign("/login");
     } finally {
       setLogoutLoading(false);
     }
-  }, [router]);
+  }, []);
 
   return (
     <div
       className="flex min-h-screen flex-col transition-colors duration-200"
       style={{ backgroundColor: "var(--color-page-bg)" }}
     >
-      {/* 1. Thin Reading Progress Bar */}
+      {/* 1. 2px Reading Progress Bar */}
       <ReadingProgressBar />
 
-      {/* 2. Sticky Header */}
+      {/* 2. Sticky Header (h-16) */}
       <Header
         displayDate={data?.displayDate || ""}
         isRefreshing={refreshing}
         theme={theme}
+        showFilters={showFilters}
+        isFilterActive={selectedCategories.length > 0}
+        onToggleFilters={handleToggleFilters}
         onRefresh={() => fetchNews(activeDate, true)}
         onToggleTheme={handleToggleTheme}
         onLogout={handleLogout}
         logoutLoading={logoutLoading}
       />
 
-      {/* 3. Main Dashboard Body */}
-      <main className="mx-auto w-full max-w-6xl flex-1 px-5 sm:px-6 py-6 sm:py-8 space-y-7">
-        {/* Navigation & Controls Section */}
-        <section className="space-y-3.5">
-          {/* 7-Day Archive Date Strip */}
-          <div className="flex flex-col gap-1.5">
-            <span
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--color-text-secondary)" }}
-            >
-              7-Day Archive
-            </span>
-            <ArchiveDateStrip
-              dates={availableDates}
-              activeDate={activeDate}
-              onSelectDate={(newDate) => {
-                if (newDate !== activeDate) {
-                  setActiveDate(newDate);
-                }
-              }}
-              disabled={loading || refreshing}
-            />
-          </div>
-
-          {/* Dynamic Category Filter Bar */}
-          {data && data.categories && data.categories.length > 0 && (
-            <div className="flex flex-col gap-1.5 pt-1">
+      {/* 3. Collapsible 7-Day Date Strip & Category Filter Bar */}
+      {showFilters && (
+        <section
+          className="border-b transition-all duration-200"
+          style={{
+            backgroundColor:
+              "color-mix(in srgb, var(--color-card-surface) 75%, transparent)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <div className="mx-auto max-w-6xl px-5 md:px-8 py-3 space-y-2.5">
+            {/* 7-Day Archive Date Strip */}
+            <div className="flex items-center gap-2.5 overflow-hidden">
               <span
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: "var(--color-text-secondary)" }}
+                className="text-[11px] font-semibold uppercase tracking-wider shrink-0 select-none hidden sm:inline"
+                style={{
+                  color: "var(--color-text-secondary)",
+                  fontFamily: "var(--font-jetbrains-mono), monospace",
+                }}
               >
-                Categories
+                Archive:
               </span>
-              <CategoryFilterBar
-                categories={data.categories}
-                selectedCategories={selectedCategories}
-                onToggleCategory={handleToggleCategory}
-                onSelectAll={handleSelectAllCategories}
+              <ArchiveDateStrip
+                dates={availableDates}
+                activeDate={activeDate}
+                onSelectDate={(newDate) => {
+                  if (newDate !== activeDate) {
+                    setActiveDate(newDate);
+                  }
+                }}
+                disabled={loading || refreshing}
               />
             </div>
-          )}
-        </section>
 
+            {/* Dynamic Category Filter Bar */}
+            {data && data.categories && data.categories.length > 0 && (
+              <div
+                className="flex items-center gap-2.5 pt-2 border-t overflow-hidden"
+                style={{ borderColor: "var(--color-border)" }}
+              >
+                <span
+                  className="text-[11px] font-semibold uppercase tracking-wider shrink-0 select-none hidden sm:inline"
+                  style={{
+                    color: "var(--color-text-secondary)",
+                    fontFamily: "var(--font-jetbrains-mono), monospace",
+                  }}
+                >
+                  Categories:
+                </span>
+                <CategoryFilterBar
+                  categories={data.categories}
+                  selectedCategories={selectedCategories}
+                  onToggleCategory={handleToggleCategory}
+                  onSelectAll={handleSelectAllCategories}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* 4. Main Dashboard Body */}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-5 md:px-8 py-6 md:py-8 space-y-8">
         {/* Error Banner */}
         {error && (
           <ErrorBanner
@@ -281,27 +318,27 @@ export function Dashboard() {
         ) : (
           data && (
             <>
-              {/* 4. Trending / Ongoing Events Section */}
+              {/* 5. Trending Intelligence Section (Topics in the News) */}
               {data.trending && data.trending.length > 0 && (
                 <TrendingSection items={data.trending} />
               )}
 
-              {/* 5. Today's News Feed Section */}
+              {/* 6. Today's News Feed Section */}
               <section className="space-y-4 pt-1">
                 {/* Section Title & Metrics */}
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h2
-                    className="text-xl sm:text-2xl font-bold tracking-tight"
+                    className="text-[22px] md:text-[24px] font-bold tracking-tight"
                     style={{ color: "var(--color-text-primary)" }}
                   >
                     Today&apos;s News
                   </h2>
                   {filteredItems.length > 0 && (
                     <span
-                      className="text-xs font-mono"
+                      className="text-xs font-mono select-none"
                       style={{
                         color: "var(--color-text-secondary)",
-                        fontFamily: "var(--font-jetbrains-mono)",
+                        fontFamily: "var(--font-jetbrains-mono), monospace",
                       }}
                     >
                       Showing {filteredItems.length} of {data.items.length} items
@@ -332,7 +369,7 @@ export function Dashboard() {
         )}
       </main>
 
-      {/* Footer */}
+      {/* 7. Footer */}
       <footer
         className="mt-16 border-t py-6 text-center text-xs"
         style={{

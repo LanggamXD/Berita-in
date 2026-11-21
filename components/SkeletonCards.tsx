@@ -7,7 +7,7 @@ export function TrendingSkeletons() {
   return (
     <div className="space-y-3.5">
       <div className="h-6 w-48 rounded-md bg-[var(--color-border)] opacity-40 animate-pulse" />
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[1, 2, 3].map((i) => (
           <div
             key={i}

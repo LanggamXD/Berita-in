@@ -218,122 +218,108 @@ async function fetchWikipediaHtml(
   return json.parse?.text?.["*"] ?? null;
 }
 
-// ─── Trending / Ongoing Events Parser ────────────────────────────────────────
+// ─── Trending / Topics in the News Parser ─────────────────────────────────────
 
 /**
- * Fetches and parses Wikipedia's Ongoing Events.
- * Attempts Portal:Current_events/Ongoing_events first, then falls back to
- * the ongoing events section directly in Portal:Current_events.
+ * Fetches and parses Wikipedia's "Topics in the news" (In The News / ITN).
+ * Looks for Portal:Current_events/Topics_in_the_news, the .p-current-events-headlines
+ * box on Portal:Current_events, or Template:In_the_news.
  */
 export async function fetchTrending(noCache = false): Promise<TrendingItem[]> {
   try {
     // 1. Try dedicated subpage first
     let html = await fetchWikipediaHtml(
-      "Portal:Current_events/Ongoing_events",
+      "Portal:Current_events/Topics_in_the_news",
       noCache
     );
 
-    // 2. Fallback to main portal if subpage doesn't exist (as is current Wikipedia layout)
+    // 2. If missing, fetch Portal:Current_events (contains .p-current-events-headlines)
     if (!html) {
       html = await fetchWikipediaHtml("Portal:Current_events", noCache);
     }
 
+    if (!html) {
+      html = await fetchWikipediaHtml("Template:In_the_news", noCache);
+    }
+
     if (!html) return [];
-    return parseTrending(html);
+    let items = parseTrending(html);
+
+    // If main portal page didn't produce items, fallback directly to Template:In_the_news
+    if (items.length === 0) {
+      const itnHtml = await fetchWikipediaHtml("Template:In_the_news", noCache);
+      if (itnHtml) {
+        items = parseTrending(itnHtml);
+      }
+    }
+
+    return items;
   } catch (err) {
-    console.warn("[berita-in] Failed to fetch trending events:", err);
+    console.warn("[berita-in] Failed to fetch trending topics in the news:", err);
     return [];
   }
 }
 
 /**
- * Parses Wikipedia HTML for ongoing events.
- * Handles both the current-events-sidebar collapsible structure and .itn-footer fallback.
+ * Parses Wikipedia HTML for "Topics in the news" headline bullets.
+ * Strictly extracts the top headline bullets from the primary <ul> and ignores
+ * the lower "Ongoing" conflicts or "Recent deaths" sub-lists.
  */
 function parseTrending(html: string): TrendingItem[] {
   const $ = cheerio.load(html);
   const items: TrendingItem[] = [];
 
-  // Strategy 1: Look inside div.current-events-sidebar or #Ongoing_events container
-  const sidebar = $(
-    ".current-events-sidebar, #Ongoing_events, .mw-collapsible"
-  )
-    .first()
-    .closest(".current-events-sidebar, .mw-collapsible, div:has(#Ongoing_events)");
+  // Look for the "Topics in the news" headlines box
+  let headlineUl = $(".p-current-events-headlines").find("ul").first();
 
-  if (sidebar.length > 0) {
-    let currentCategory = "Ongoing";
-
-    sidebar.find("h3, .mw-html-heading, dl, ul").each((_i, el) => {
-      const $el = $(el);
-      if ($el.is("h3") || $el.find("h3").length > 0) {
-        const cat = stripHtml($el.text());
-        if (cat) currentCategory = cat;
-      } else if ($el.is("ul")) {
-        $el.find("> li").each((_j, li) => {
-          const $li = $(li);
-          const firstLink = $li.find("a[href]").first();
-          const rawTitle = $li.text().replace(/\s+/g, " ").trim();
-          const title = stripHtml(rawTitle);
-          const href = firstLink.attr("href") || "";
-
-          if (title && href) {
-            const url = sanitizeUrl(href) ?? `${WIKIPEDIA_ORIGIN}/wiki/Portal:Current_events`;
-            items.push({
-              id: `trending-${items.length}`,
-              title,
-              category: currentCategory,
-              url,
-            });
-          }
-        });
-      }
-    });
+  if (headlineUl.length === 0) {
+    const heading = $("#Topics_in_the_news, :header:contains('Topics in the news')").first();
+    if (heading.length > 0) {
+      headlineUl = heading.closest("div, section").find("ul").first();
+    }
   }
 
-  // Strategy 2: If none found in sidebar, check .itn-footer (In the news footer box)
-  if (items.length === 0) {
-    $(".itn-footer").find("li a").each((_i, a) => {
-      const $a = $(a);
-      const title = stripHtml($a.text());
-      const href = $a.attr("href") || "";
-      if (title && href && !title.toLowerCase().includes("nominate")) {
-        const url = sanitizeUrl(href) ?? `${WIKIPEDIA_ORIGIN}/wiki/Portal:Current_events`;
-        items.push({
-          id: `trending-${items.length}`,
-          title,
-          category: "Ongoing",
-          url,
-        });
-      }
-    });
+  // Fallback: the first <ul> on the page (Template:In_the_news case)
+  if (headlineUl.length === 0) {
+    headlineUl = $("ul").first();
   }
 
-  // Strategy 3: General li search if still empty (subpage case)
-  if (items.length === 0) {
-    $("li").each((_i, el) => {
-      const $el = $(el);
-      const rawText = $el.text().trim();
-      if (!rawText || rawText.length < 5 || rawText.length > 250) return;
+  if (headlineUl.length === 0) return [];
 
-      const firstLink = $el.find("a[href]").first();
-      const href = firstLink.attr("href") || "";
-      const url = sanitizeUrl(href);
-      if (!url) return;
+  // Strictly extract the main headline bullets (direct children <li> of the first <ul>)
+  headlineUl.children("li").each((i, li) => {
+    const $li = $(li);
 
-      const title = stripHtml(rawText);
-      if (title) {
-        items.push({
-          id: `trending-${items.length}`,
-          title,
-          category: "Ongoing",
-          url,
-        });
-      }
-    });
-  }
+    // Find primary link: bolded <b><a href="..."> first, or first valid <a>
+    const boldLink = $li.find("b a[href], strong a[href]").first();
+    const firstLink = $li.find("a[href]").first();
+    const link = boldLink.length > 0 ? boldLink : firstLink;
+    const href = link.attr("href") || "";
+    const safeUrl = sanitizeUrl(href) ?? `${WIKIPEDIA_ORIGIN}/wiki/Portal:Current_events`;
 
-  return items.slice(0, 30); // cap at reasonable limit
+    // Strip image annotations like "(pictured)", "(rendering shown)", [1] citations
+    const clone = $li.clone();
+    clone.children("ul, ol").remove();
+    let rawTitle = clone.text();
+    rawTitle = rawTitle
+      .replace(/\s*\((?:pictured|shown|rendering shown|audio shown|video shown)[^)]*\)/gi, "")
+      .replace(/\s*\[[^\]]*\]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const title = stripHtml(rawTitle);
+
+    if (title && title.length > 10) {
+      items.push({
+        id: `trending-${i}`,
+        title,
+        category: "IN THE NEWS",
+        url: safeUrl,
+      });
+    }
+  });
+
+  return items.slice(0, 12); // cap at reasonable limit
 }
 
 // ─── Daily News Parser ────────────────────────────────────────────────────────
@@ -412,14 +398,26 @@ function parseDailyNews(html: string): NewsItem[] {
       if (catText && catText.length > 1 && catText.length < 120) {
         currentCategory = catText;
       }
-    } else if ($el.is("ul")) {
-      // 2. Process list items under this category
+    } else if ($el.is("ul, ol")) {
+      // 2. Process all leaf list items under this category
       $el.find("li").each((_j, li) => {
         const $li = $(li);
 
-        // Skip parent <li> that only contain nested <ul> (we want the leaf items with news)
-        if ($li.children("ul").length > 0) {
+        // Skip parent <li> that contains nested lists — we want the leaf items with news
+        if ($li.children("ul, ol").length > 0) {
           return;
+        }
+
+        // When a leaf <li> is nested under a parent topic <li>, extract parent topic
+        const parentLi = $li.parents("li").first();
+        let topic: string | undefined;
+        if (parentLi.length > 0) {
+          const cloneParent = parentLi.clone();
+          cloneParent.children("ul, ol").remove();
+          const parentText = stripHtml(cloneParent.text());
+          if (parentText && parentText.length < 150) {
+            topic = parentText;
+          }
         }
 
         // Extract sources: external links (non-Wikipedia)
@@ -445,8 +443,10 @@ function parseDailyNews(html: string): NewsItem[] {
           }
         });
 
-        // Extract summary: clone to avoid modifying original, remove any nested tags if any
-        let rawSummary = $li.clone().find("ul").remove().end().text().trim();
+        // Extract summary: clean leaf li text without nested lists
+        const clone = $li.clone();
+        clone.children("ul, ol").remove();
+        let rawSummary = clone.text().trim();
 
         // Strip trailing source citation patterns like "(Reuters)" "(BBC News) (Al Jazeera)"
         rawSummary = rawSummary
@@ -463,6 +463,7 @@ function parseDailyNews(html: string): NewsItem[] {
           items.push({
             id: `news-${itemIndex++}-${Date.now()}`,
             category: currentCategory,
+            topic,
             summary,
             sources,
           });
@@ -495,7 +496,18 @@ function parseDailyNewsFallback($: cheerio.CheerioAPI): NewsItem[] {
       } else if (tagName === "dd") {
         $(child).find("li").each((_k, li) => {
           const $li = $(li);
-          if ($li.children("ul").length > 0) return;
+          if ($li.children("ul, ol").length > 0) return;
+
+          const parentLi = $li.parents("li").first();
+          let topic: string | undefined;
+          if (parentLi.length > 0) {
+            const cloneParent = parentLi.clone();
+            cloneParent.children("ul, ol").remove();
+            const parentText = stripHtml(cloneParent.text());
+            if (parentText && parentText.length < 150) {
+              topic = parentText;
+            }
+          }
 
           const sources: NewsSource[] = [];
           $li.find("a[href]").each((_l, a) => {
@@ -514,7 +526,9 @@ function parseDailyNewsFallback($: cheerio.CheerioAPI): NewsItem[] {
             }
           });
 
-          let raw = $li.text().trim();
+          const clone = $li.clone();
+          clone.children("ul, ol").remove();
+          let raw = clone.text().trim();
           raw = raw
             .replace(/\s*\([^)]{1,80}\)\s*$/g, "")
             .replace(/\s*\([^)]{1,80}\)\s*$/g, "")
@@ -526,6 +540,7 @@ function parseDailyNewsFallback($: cheerio.CheerioAPI): NewsItem[] {
             items.push({
               id: `news-${itemIndex++}-${Date.now()}`,
               category: currentCategory,
+              topic,
               summary,
               sources,
             });
