@@ -5,9 +5,10 @@ import { NewsSummaryText } from "./NewsSummaryText";
 interface NewsCardProps {
   item: NewsItem;
   date?: string;
+  isTranslateAll?: boolean;
 }
 
-export function NewsCard({ item, date }: NewsCardProps) {
+export function NewsCard({ item, date, isTranslateAll = false }: NewsCardProps) {
   const hasSources = item.sources && item.sources.length > 0;
   const primaryUrl = hasSources
     ? item.sources[0].url
@@ -56,7 +57,7 @@ export function NewsCard({ item, date }: NewsCardProps) {
         )}
 
         <div className="mb-4">
-          <NewsSummaryText text={item.summary} />
+          <NewsSummaryText text={item.summary} disabled={isTranslateAll} />
         </div>
       </div>
 

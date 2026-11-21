@@ -1,6 +1,6 @@
 "use client";
 
-import { ListFilter, RefreshCw, Sun, Moon, LogOut } from "lucide-react";
+import { ListFilter, RefreshCw, Sun, Moon, LogOut, Languages } from "lucide-react";
 
 interface HeaderProps {
   displayDate: string;
@@ -8,9 +8,12 @@ interface HeaderProps {
   theme: "light" | "dark";
   showFilters: boolean;
   isFilterActive: boolean;
+  isTranslateAll: boolean;
+  isTranslateAllLoading: boolean;
   onToggleFilters: () => void;
   onRefresh: () => void;
   onToggleTheme: () => void;
+  onToggleTranslateAll: () => void;
   onLogout: () => void;
   logoutLoading?: boolean;
 }
@@ -21,9 +24,12 @@ export function Header({
   theme,
   showFilters,
   isFilterActive,
+  isTranslateAll,
+  isTranslateAllLoading,
   onToggleFilters,
   onRefresh,
   onToggleTheme,
+  onToggleTranslateAll,
   onLogout,
   logoutLoading = false,
 }: HeaderProps) {
@@ -132,7 +138,40 @@ export function Header({
             />
           </button>
 
-          {/* 3. Theme Toggle Button */}
+          {/* 3. Translate All (EN / ID) Button */}
+          <button
+            type="button"
+            onClick={onToggleTranslateAll}
+            disabled={isTranslateAllLoading}
+            title={
+              isTranslateAll
+                ? "Kembali ke Bahasa Inggris (EN)"
+                : "Terjemahkan Semua (EN / ID)"
+            }
+            aria-label="Terjemahkan Semua (EN / ID)"
+            className={`h-9 w-9 rounded-full border flex items-center justify-center transition-all hover:opacity-80 disabled:opacity-50 select-none cursor-pointer ${
+              isTranslateAll
+                ? "bg-[#0F766E] text-white border-[#0F766E] dark:bg-[#2DD4BF] dark:text-[#0F1419] dark:border-[#2DD4BF] shadow-xs"
+                : ""
+            }`}
+            style={
+              !isTranslateAll
+                ? {
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-text-secondary)",
+                    backgroundColor: "var(--color-card-surface)",
+                  }
+                : undefined
+            }
+          >
+            {isTranslateAllLoading ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Languages className="h-4 w-4" />
+            )}
+          </button>
+
+          {/* 4. Theme Toggle Button */}
           <button
             type="button"
             onClick={onToggleTheme}

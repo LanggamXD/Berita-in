@@ -6,6 +6,7 @@ import { useTranslation } from "./TranslationProvider";
 interface NewsSummaryTextProps {
   text: string;
   className?: string;
+  disabled?: boolean;
 }
 
 interface TextToken {
@@ -82,11 +83,28 @@ function tokenizeText(text: string): TextToken[] {
  * Every English word is individually clickable for on-demand EN -> ID translation,
  * while maintaining a clean, distraction-free reading experience by default.
  */
-export function NewsSummaryText({ text, className = "" }: NewsSummaryTextProps) {
+export function NewsSummaryText({
+  text,
+  className = "",
+  disabled = false,
+}: NewsSummaryTextProps) {
   const instanceId = useId();
   const { activeWordId, translateWord } = useTranslation();
 
-  const tokens = useMemo(() => tokenizeText(text), [text]);
+  const tokens = useMemo(
+    () => (disabled ? [] : tokenizeText(text)),
+    [text, disabled]
+  );
+
+  if (disabled) {
+    return (
+      <p
+        className={`text-[14px] md:text-[15px] leading-relaxed text-[var(--color-text-primary)] ${className}`}
+      >
+        {text}
+      </p>
+    );
+  }
 
   const handleWordClick = (
     e: MouseEvent<HTMLSpanElement>,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import type { DailyNewsResponse, AvailableDateEntry } from "@/types/news";
 import { ReadingProgressBar } from "./ReadingProgressBar";
 import { Header } from "./Header";
@@ -16,6 +16,7 @@ import { TranslationProvider } from "./TranslationProvider";
 const THEME_STORAGE_KEY = "beritain_theme";
 const CATEGORY_STORAGE_KEY = "beritain_categories";
 const FILTER_VISIBILITY_KEY = "beritain_filter_visibility";
+const TRANSLATE_ALL_STORAGE_KEY = "beritain_translate_all";
 
 export function Dashboard() {
   // ── State ──────────────────────────────────────────────────────────────────
@@ -29,6 +30,12 @@ export function Dashboard() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState<boolean>(true);
   const [logoutLoading, setLogoutLoading] = useState<boolean>(false);
+
+  // ── Translate All State ───────────────────────────────────────────────────
+  const [isTranslateAll, setIsTranslateAll] = useState<boolean>(false);
+  const [isTranslateAllLoading, setIsTranslateAllLoading] = useState<boolean>(false);
+  const [fullTextTranslations, setFullTextTranslations] = useState<Record<string, string>>({});
+  const translationsCacheRef = useRef<Record<string, string>>({});
 
   // ── Initialize Theme, Dates & Preferences ──────────────────────────────────
   useEffect(() => {
@@ -87,6 +94,10 @@ export function Dashboard() {
       const savedVisibility = localStorage.getItem(FILTER_VISIBILITY_KEY);
       if (savedVisibility !== null) {
         setShowFilters(savedVisibility === "true");
+      }
+      const savedTranslateAll = localStorage.getItem(TRANSLATE_ALL_STORAGE_KEY);
+      if (savedTranslateAll === "true") {
+        setIsTranslateAll(true);
       }
     } catch {
       // ignore storage errors
@@ -204,6 +215,112 @@ export function Dashboard() {
     );
   }, [data, selectedCategories]);
 
+  // ── Batch Translate All Logic ──────────────────────────────────────────────
+  const fetchTranslationsForData = useCallback(
+    async (currentData: DailyNewsResponse) => {
+      if (!currentData) return;
+
+      const textsToTranslate: string[] = [];
+
+      if (currentData.trending) {
+        for (const t of currentData.trending) {
+          if (t.title) textsToTranslate.push(t.title);
+        }
+      }
+
+      if (currentData.items) {
+        for (const item of currentData.items) {
+          if (item.topic) textsToTranslate.push(item.topic);
+          if (item.summary) textsToTranslate.push(item.summary);
+        }
+      }
+
+      // Filter only uncached texts
+      const uncached = textsToTranslate.filter(
+        (txt) => !translationsCacheRef.current[txt]
+      );
+
+      if (uncached.length === 0) return;
+
+      setIsTranslateAllLoading(true);
+      try {
+        const res = await fetch("/api/translate/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texts: uncached }),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.translations) {
+            translationsCacheRef.current = {
+              ...translationsCacheRef.current,
+              ...json.translations,
+            };
+            setFullTextTranslations({ ...translationsCacheRef.current });
+          }
+        }
+      } catch (err) {
+        console.error("Batch translation error:", err);
+      } finally {
+        setIsTranslateAllLoading(false);
+      }
+    },
+    []
+  );
+
+  const handleToggleTranslateAll = useCallback(async () => {
+    if (!isTranslateAll) {
+      // Turning ON
+      setIsTranslateAll(true);
+      try {
+        localStorage.setItem(TRANSLATE_ALL_STORAGE_KEY, "true");
+      } catch {
+        // ignore
+      }
+      if (data) {
+        await fetchTranslationsForData(data);
+      }
+    } else {
+      // Turning OFF
+      setIsTranslateAll(false);
+      try {
+        localStorage.setItem(TRANSLATE_ALL_STORAGE_KEY, "false");
+      } catch {
+        // ignore
+      }
+    }
+  }, [isTranslateAll, data, fetchTranslationsForData]);
+
+  // If Translate All is active when new data loads (date change or refresh), translate new items automatically
+  useEffect(() => {
+    if (isTranslateAll && data) {
+      fetchTranslationsForData(data);
+    }
+  }, [isTranslateAll, data, fetchTranslationsForData]);
+
+  // ── Display Items with Translated Text when isTranslateAll is active ────────
+  const displayTrending = useMemo(() => {
+    if (!data?.trending) return [];
+    if (!isTranslateAll) return data.trending;
+    return data.trending.map((item) => ({
+      ...item,
+      title: fullTextTranslations[item.title] || item.title,
+    }));
+  }, [data?.trending, isTranslateAll, fullTextTranslations]);
+
+  const displayItems = useMemo(() => {
+    if (!filteredItems) return [];
+    if (!isTranslateAll) return filteredItems;
+    return filteredItems.map((item) => ({
+      ...item,
+      topic: item.topic
+        ? fullTextTranslations[item.topic] || item.topic
+        : undefined,
+      summary: fullTextTranslations[item.summary] || item.summary,
+    }));
+  }, [filteredItems, isTranslateAll, fullTextTranslations]);
+
   // ── Logout Handler ─────────────────────────────────────────────────────────
   const handleLogout = useCallback(async () => {
     setLogoutLoading(true);
@@ -233,9 +350,12 @@ export function Dashboard() {
           theme={theme}
           showFilters={showFilters}
           isFilterActive={selectedCategories.length > 0}
+          isTranslateAll={isTranslateAll}
+          isTranslateAllLoading={isTranslateAllLoading}
           onToggleFilters={handleToggleFilters}
           onRefresh={() => fetchNews(activeDate, true)}
           onToggleTheme={handleToggleTheme}
+          onToggleTranslateAll={handleToggleTranslateAll}
           onLogout={handleLogout}
           logoutLoading={logoutLoading}
         />
@@ -321,8 +441,8 @@ export function Dashboard() {
             data && (
               <>
                 {/* 5. Trending Intelligence Section (Topics in the News) */}
-                {data.trending && data.trending.length > 0 && (
-                  <TrendingSection items={data.trending} />
+                {displayTrending && displayTrending.length > 0 && (
+                  <TrendingSection items={displayTrending} />
                 )}
 
                 {/* 6. Today's Briefing Section */}
@@ -335,7 +455,7 @@ export function Dashboard() {
                     >
                       Today&apos;s Briefing
                     </h2>
-                    {filteredItems.length > 0 && (
+                    {displayItems.length > 0 && (
                       <span
                         className="text-xs font-mono select-none"
                         style={{
@@ -343,16 +463,21 @@ export function Dashboard() {
                           fontFamily: "var(--font-jetbrains-mono), monospace",
                         }}
                       >
-                        Showing {filteredItems.length} of {data.items.length} items
+                        Showing {displayItems.length} of {data.items.length} items
                       </span>
                     )}
                   </div>
 
                   {/* News Card Grid */}
-                  {filteredItems.length > 0 ? (
+                  {displayItems.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {filteredItems.map((item) => (
-                        <NewsCard key={item.id} item={item} date={data.date} />
+                      {displayItems.map((item) => (
+                        <NewsCard
+                          key={item.id}
+                          item={item}
+                          date={data.date}
+                          isTranslateAll={isTranslateAll}
+                        />
                       ))}
                     </div>
                   ) : (
