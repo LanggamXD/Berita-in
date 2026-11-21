@@ -11,6 +11,7 @@ import { NewsCard } from "./NewsCard";
 import { TrendingSkeletons, NewsFeedSkeletons } from "./SkeletonCards";
 import { EmptyState } from "./EmptyState";
 import { ErrorBanner } from "./ErrorBanner";
+import { TranslationProvider } from "./TranslationProvider";
 
 const THEME_STORAGE_KEY = "beritain_theme";
 const CATEGORY_STORAGE_KEY = "beritain_categories";
@@ -217,67 +218,41 @@ export function Dashboard() {
   }, []);
 
   return (
-    <div
-      className="flex min-h-screen flex-col transition-colors duration-200"
-      style={{ backgroundColor: "var(--color-page-bg)" }}
-    >
-      {/* 1. 2px Reading Progress Bar */}
-      <ReadingProgressBar />
+    <TranslationProvider>
+      <div
+        className="flex min-h-screen flex-col transition-colors duration-200"
+        style={{ backgroundColor: "var(--color-page-bg)" }}
+      >
+        {/* 1. 2px Reading Progress Bar */}
+        <ReadingProgressBar />
 
-      {/* 2. Sticky Header (h-16) */}
-      <Header
-        displayDate={data?.displayDate || ""}
-        isRefreshing={refreshing}
-        theme={theme}
-        showFilters={showFilters}
-        isFilterActive={selectedCategories.length > 0}
-        onToggleFilters={handleToggleFilters}
-        onRefresh={() => fetchNews(activeDate, true)}
-        onToggleTheme={handleToggleTheme}
-        onLogout={handleLogout}
-        logoutLoading={logoutLoading}
-      />
+        {/* 2. Sticky Header (h-16) */}
+        <Header
+          displayDate={data?.displayDate || ""}
+          isRefreshing={refreshing}
+          theme={theme}
+          showFilters={showFilters}
+          isFilterActive={selectedCategories.length > 0}
+          onToggleFilters={handleToggleFilters}
+          onRefresh={() => fetchNews(activeDate, true)}
+          onToggleTheme={handleToggleTheme}
+          onLogout={handleLogout}
+          logoutLoading={logoutLoading}
+        />
 
-      {/* 3. Collapsible 7-Day Date Strip & Category Filter Bar */}
-      {showFilters && (
-        <section
-          className="border-b transition-all duration-200"
-          style={{
-            backgroundColor:
-              "color-mix(in srgb, var(--color-card-surface) 75%, transparent)",
-            borderColor: "var(--color-border)",
-          }}
-        >
-          <div className="mx-auto max-w-6xl px-5 md:px-8 py-3 space-y-2.5">
-            {/* 7-Day Archive Date Strip */}
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <span
-                className="text-[11px] font-semibold uppercase tracking-wider shrink-0 select-none hidden sm:inline"
-                style={{
-                  color: "var(--color-text-secondary)",
-                  fontFamily: "var(--font-jetbrains-mono), monospace",
-                }}
-              >
-                Archive:
-              </span>
-              <ArchiveDateStrip
-                dates={availableDates}
-                activeDate={activeDate}
-                onSelectDate={(newDate) => {
-                  if (newDate !== activeDate) {
-                    setActiveDate(newDate);
-                  }
-                }}
-                disabled={loading || refreshing}
-              />
-            </div>
-
-            {/* Dynamic Category Filter Bar */}
-            {data && data.categories && data.categories.length > 0 && (
-              <div
-                className="flex items-center gap-2.5 pt-2 border-t overflow-hidden"
-                style={{ borderColor: "var(--color-border)" }}
-              >
+        {/* 3. Collapsible 7-Day Date Strip & Category Filter Bar */}
+        {showFilters && (
+          <section
+            className="border-b transition-all duration-200"
+            style={{
+              backgroundColor:
+                "color-mix(in srgb, var(--color-card-surface) 75%, transparent)",
+              borderColor: "var(--color-border)",
+            }}
+          >
+            <div className="mx-auto max-w-6xl px-5 md:px-8 py-3 space-y-2.5">
+              {/* 7-Day Archive Date Strip */}
+              <div className="flex items-center gap-2.5 overflow-hidden">
                 <span
                   className="text-[11px] font-semibold uppercase tracking-wider shrink-0 select-none hidden sm:inline"
                   style={{
@@ -285,111 +260,139 @@ export function Dashboard() {
                     fontFamily: "var(--font-jetbrains-mono), monospace",
                   }}
                 >
-                  Categories:
+                  Archive:
                 </span>
-                <CategoryFilterBar
-                  categories={data.categories}
-                  selectedCategories={selectedCategories}
-                  onToggleCategory={handleToggleCategory}
-                  onSelectAll={handleSelectAllCategories}
+                <ArchiveDateStrip
+                  dates={availableDates}
+                  activeDate={activeDate}
+                  onSelectDate={(newDate) => {
+                    if (newDate !== activeDate) {
+                      setActiveDate(newDate);
+                    }
+                  }}
+                  disabled={loading || refreshing}
                 />
               </div>
-            )}
-          </div>
-        </section>
-      )}
 
-      {/* 4. Main Dashboard Body */}
-      <main className="mx-auto w-full max-w-6xl flex-1 px-5 md:px-8 py-6 md:py-8 space-y-8">
-        {/* Error Banner */}
-        {error && (
-          <ErrorBanner
-            message={error}
-            onRetry={() => fetchNews(activeDate, true)}
-          />
-        )}
-
-        {/* Loading Skeletons */}
-        {loading ? (
-          <div className="space-y-8 pt-2">
-            <TrendingSkeletons />
-            <NewsFeedSkeletons />
-          </div>
-        ) : (
-          data && (
-            <>
-              {/* 5. Trending Intelligence Section (Topics in the News) */}
-              {data.trending && data.trending.length > 0 && (
-                <TrendingSection items={data.trending} />
-              )}
-
-              {/* 6. Today's News Feed Section */}
-              <section className="space-y-4 pt-1">
-                {/* Section Title & Metrics */}
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2
-                    className="text-[22px] md:text-[24px] font-bold tracking-tight"
-                    style={{ color: "var(--color-text-primary)" }}
+              {/* Dynamic Category Filter Bar */}
+              {data && data.categories && data.categories.length > 0 && (
+                <div
+                  className="flex items-center gap-2.5 pt-2 border-t overflow-hidden"
+                  style={{ borderColor: "var(--color-border)" }}
+                >
+                  <span
+                    className="text-[11px] font-semibold uppercase tracking-wider shrink-0 select-none hidden sm:inline"
+                    style={{
+                      color: "var(--color-text-secondary)",
+                      fontFamily: "var(--font-jetbrains-mono), monospace",
+                    }}
                   >
-                    Today&apos;s News
-                  </h2>
-                  {filteredItems.length > 0 && (
-                    <span
-                      className="text-xs font-mono select-none"
-                      style={{
-                        color: "var(--color-text-secondary)",
-                        fontFamily: "var(--font-jetbrains-mono), monospace",
-                      }}
-                    >
-                      Showing {filteredItems.length} of {data.items.length} items
-                    </span>
-                  )}
-                </div>
-
-                {/* News Card Grid */}
-                {filteredItems.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filteredItems.map((item) => (
-                      <NewsCard key={item.id} item={item} />
-                    ))}
-                  </div>
-                ) : (
-                  /* Empty State */
-                  <EmptyState
-                    isFiltered={
-                      data.items.length > 0 && selectedCategories.length > 0
-                    }
-                    dateStr={data.displayDate || activeDate}
-                    onResetFilter={handleSelectAllCategories}
+                    Categories:
+                  </span>
+                  <CategoryFilterBar
+                    categories={data.categories}
+                    selectedCategories={selectedCategories}
+                    onToggleCategory={handleToggleCategory}
+                    onSelectAll={handleSelectAllCategories}
                   />
-                )}
-              </section>
-            </>
-          )
+                </div>
+              )}
+            </div>
+          </section>
         )}
-      </main>
 
-      {/* 7. Footer */}
-      <footer
-        className="mt-16 border-t py-6 text-center text-xs"
-        style={{
-          borderColor: "var(--color-border)",
-          color: "var(--color-text-secondary)",
-        }}
-      >
-        <p>
-          Berita-in · Powered by{" "}
-          <a
-            href="https://en.wikipedia.org/wiki/Portal:Current_events"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline font-medium"
-            style={{ color: "var(--color-accent)" }}
-          >
-            Wikipedia Current Events
-          </a>
-        </p>
-      </footer>
-    </div>
+        {/* 4. Main Dashboard Body */}
+        <main className="mx-auto w-full max-w-6xl flex-1 px-5 md:px-8 py-6 md:py-8 space-y-8">
+          {/* Error Banner */}
+          {error && (
+            <ErrorBanner
+              message={error}
+              onRetry={() => fetchNews(activeDate, true)}
+            />
+          )}
+
+          {/* Loading Skeletons */}
+          {loading ? (
+            <div className="space-y-8 pt-2">
+              <TrendingSkeletons />
+              <NewsFeedSkeletons />
+            </div>
+          ) : (
+            data && (
+              <>
+                {/* 5. Trending Intelligence Section (Topics in the News) */}
+                {data.trending && data.trending.length > 0 && (
+                  <TrendingSection items={data.trending} />
+                )}
+
+                {/* 6. Today's Briefing Section */}
+                <section className="space-y-4 pt-1">
+                  {/* Section Title & Metrics */}
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2
+                      className="text-[22px] md:text-[24px] font-bold tracking-tight"
+                      style={{ color: "var(--color-text-primary)" }}
+                    >
+                      Today&apos;s Briefing
+                    </h2>
+                    {filteredItems.length > 0 && (
+                      <span
+                        className="text-xs font-mono select-none"
+                        style={{
+                          color: "var(--color-text-secondary)",
+                          fontFamily: "var(--font-jetbrains-mono), monospace",
+                        }}
+                      >
+                        Showing {filteredItems.length} of {data.items.length} items
+                      </span>
+                    )}
+                  </div>
+
+                  {/* News Card Grid */}
+                  {filteredItems.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {filteredItems.map((item) => (
+                        <NewsCard key={item.id} item={item} date={data.date} />
+                      ))}
+                    </div>
+                  ) : (
+                    /* Empty State */
+                    <EmptyState
+                      isFiltered={
+                        data.items.length > 0 && selectedCategories.length > 0
+                      }
+                      dateStr={data.displayDate || activeDate}
+                      onResetFilter={handleSelectAllCategories}
+                    />
+                  )}
+                </section>
+              </>
+            )
+          )}
+        </main>
+
+        {/* 7. Footer */}
+        <footer
+          className="mt-16 border-t py-6 text-center text-xs"
+          style={{
+            borderColor: "var(--color-border)",
+            color: "var(--color-text-secondary)",
+          }}
+        >
+          <p>
+            Berita-in · Powered by{" "}
+            <a
+              href="https://en.wikipedia.org/wiki/Portal:Current_events"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline font-medium"
+              style={{ color: "var(--color-accent)" }}
+            >
+              Wikipedia Current Events
+            </a>
+          </p>
+        </footer>
+      </div>
+    </TranslationProvider>
   );
 }

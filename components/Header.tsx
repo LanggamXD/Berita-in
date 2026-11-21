@@ -49,25 +49,12 @@ export function Header({
             B
           </div>
           <div className="min-w-0 flex flex-col justify-center">
-            <div className="flex items-center gap-2">
-              <h1
-                className="text-[20px] font-bold tracking-tight select-none leading-none"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                Berita<span style={{ color: "var(--color-accent)" }}>-in</span>
-              </h1>
-              <span
-                className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-semibold border select-none"
-                style={{
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-accent)",
-                  backgroundColor: "var(--color-accent-subtle)",
-                  fontFamily: "var(--font-jetbrains-mono), monospace",
-                }}
-              >
-                EDITION
-              </span>
-            </div>
+            <h1
+              className="text-[20px] font-bold tracking-tight select-none leading-none"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Berita<span style={{ color: "var(--color-accent)" }}>-in</span>
+            </h1>
             {displayDate ? (
               <p
                 className="text-xs truncate font-mono mt-0.5"
