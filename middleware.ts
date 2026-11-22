@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, AUTH_COOKIE } from "@/lib/auth";
 
-/** Prefixes that are always allowed publicly */
-const PUBLIC_PREFIXES = ["/_next", "/favicon.ico"];
+/** Prefixes and files that are always allowed publicly */
+const PUBLIC_PREFIXES = ["/_next", "/favicon.ico", "/icon", "/apple-icon"];
 
 export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow static assets and Next.js internals
+  // 1. Allow static assets, app icons, and Next.js internals
   for (const prefix of PUBLIC_PREFIXES) {
     if (pathname.startsWith(prefix)) {
       return NextResponse.next();
@@ -41,5 +41,7 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon).*)",
+  ],
 };
