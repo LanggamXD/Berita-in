@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Berita-in
 
-## Getting Started
+Web *daily briefing* berita harian minimalis berbasis **Wikipedia Current Events** dengan fitur utama **terjemahan per kata (EN → ID)** untuk latihan bahasa Inggris.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Pratinjau Aplikasi
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+![Tampilan Utama Berita-in](./screenshots/dashboard-light.png)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Mode Gelap (*Dark Mode*) | Fitur *Click-to-Translate* |
+| :---: | :---: |
+| ![Dark Mode](./screenshots/dashboard-dark.png) | ![Click to Translate](./screenshots/click-to-translate.png) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Tentang Proyek
 
-To learn more about Next.js, take a look at the following resources:
+**Berita-in** adalah pembaca ringkasan berita harian (*daily briefing*) bebas gangguan yang mengambil data langsung dari **Wikipedia Current Events** (`Portal:Current events`). Aplikasi ini dibuat agar membaca berita internasional berbahasa Inggris setiap hari terasa ringan, rapi, sekaligus menjadi sarana belajar kosakata secara kontekstual.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Fitur Utama
 
-## Deploy on Vercel
+### 1. Terjemahan Per Kata Interaktif (EN → ID) *(Fitur Utama)*
+* **Klik / Tap Kata untuk Arti Singkat:** Setiap kata bahasa Inggris pada ringkasan berita bisa diklik atau disentuh untuk memunculkan *pop-up* arti singkat dalam Bahasa Indonesia tanpa mengganggu kenyamanan membaca paragraf utuh.
+* **Cepat dengan *Cache*:** Hasil terjemahan kata disimpan sementara di *cache* klien maupun server, jadi kata yang pernah dicari langsung muncul secara instan.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 2. Terjemahkan Semua (EN ↔ ID) / *Translate All*
+* **Satu Klik Ubah Bahasa Halaman:** Tersedia tombol *toggle* untuk menerjemahkan seluruh judul *Trending Intelligence*, tajuk topik, dan ringkasan *Today's Briefing* ke Bahasa Indonesia secara serentak, lalu kembali ke Bahasa Inggris kapan saja.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 3. Kurasi Berita Wikipedia Current Events
+* **Trending Intelligence (*Topics in the news*):** Menampilkan sorotan topik utama yang sedang hangat dalam tampilan kartu ringkas dengan navigasi geser halaman.
+* **Today's Briefing & Arsip 7 Hari:** Menyajikan ringkasan berita harian yang dikelompokkan per kategori (politik, ekonomi, sains & teknologi, konflik, dan peristiwa dunia) lengkap dengan akses arsip hingga **7 hari ke belakang**.
+
+### 4. Personalisasi Tampilan
+* **Mode Terang & Mode Gelap (*Light / Dark Mode*):** Pengalih tema yang nyaman di mata untuk membaca pagi maupun malam, tersimpan otomatis di `localStorage` perangkat.
+* **Filter Kategori:** Menampilkan atau menyembunyikan kategori berita sesuai minat bacaan dan menyimpannya langsung di peramban masing-masing perangkat.
+
+### 5. Akses Privat & *Smart Caching*
+* **Gerbang Akses Privat:** Dilindungi halaman masuk (*password gate*) dengan sesi *cookie* selama **30 hari**.
+* ***Server Cache* & *Manual Refresh*:** Data Wikipedia di-*cache* secara berkala di server agar pemuatan halaman tetap cepat, disertai tombol *refresh* manual untuk mengambil pembaruan terbaru.
+
+---
+
+## *Tech Stack*
+
+* **Framework:** Next.js (App Router) & TypeScript
+* **Styling:** Tailwind CSS
+* **Sumber Data:** Wikipedia MediaWiki API (`Portal:Current events`) & Cheerio HTML Parser
+* **Hosting & Deployment:** Vercel
+
+---
+
+## Catatan
+
+Konten berita bersumber dari komunitas penyunting **Wikipedia Current Events** dan ditautkan langsung ke referensi berita aslinya.
