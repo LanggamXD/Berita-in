@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   ListFilter,
   RefreshCw,
@@ -44,8 +45,24 @@ export function Header({
   logoutLoading = false,
 }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock background scrolling while mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isMobileMenuOpen]);
 
   // Close mobile menu on Escape key or clicking outside
   useEffect(() => {
@@ -83,7 +100,7 @@ export function Header({
 
   return (
     <header
-      className="sticky top-0 z-40 h-16 border-b backdrop-blur-md transition-colors"
+      className="sticky top-0 z-30 h-16 border-b backdrop-blur-md transition-colors"
       style={{
         backgroundColor:
           "color-mix(in srgb, var(--color-card-surface) 92%, transparent)",
@@ -299,21 +316,31 @@ export function Header({
               />
             )}
           </button>
+        </div>
+      </div>
 
-          {/* Invisible Backdrop to auto-dismiss on tap outside */}
-          {isMobileMenuOpen && (
+      {/* Portal mobile dropdown and backdrop to document.body so they escape the sticky header's backdrop-filter stacking context */}
+      {mounted &&
+        isMobileMenuOpen &&
+        createPortal(
+          <div className="md:hidden">
+            {/* Full-screen backdrop overlay */}
             <div
-              className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 backdrop-blur-[1px] md:hidden"
-              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMobileMenuOpen(false);
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+              }}
               aria-hidden="true"
             />
-          )}
 
-          {/* Floating Dropdown Menu */}
-          {isMobileMenuOpen && (
+            {/* Floating Dropdown Menu positioned fixed below the 64px header */}
             <div
               ref={menuRef}
-              className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-64 rounded-xl border p-2 shadow-lg animate-in fade-in zoom-in-95 duration-150 select-none"
+              className="fixed top-[72px] right-4 z-50 w-64 rounded-xl border p-2 shadow-xl animate-in fade-in zoom-in-95 duration-150 select-none"
               style={{
                 backgroundColor: "var(--color-card-surface)",
                 borderColor: "var(--color-border)",
@@ -326,8 +353,11 @@ export function Header({
                   onToggleFilters();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center justify-between w-full px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B] active:bg-[#E2E8F0] dark:active:bg-[#334155] cursor-pointer"
-                style={{ color: "var(--color-text-primary)" }}
+                className={`flex items-center justify-between w-full px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                  theme === "dark"
+                    ? "text-[#E8EDF2] hover:bg-[#1E293B] active:bg-[#2A3540]"
+                    : "text-[#141B2B] hover:bg-[#F1F5F9] active:bg-[#E2E8F0]"
+                }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <ListFilter
@@ -372,8 +402,11 @@ export function Header({
                   onToggleTranslateAll();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center justify-between w-full px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B] active:bg-[#E2E8F0] dark:active:bg-[#334155] disabled:opacity-50 cursor-pointer"
-                style={{ color: "var(--color-text-primary)" }}
+                className={`flex items-center justify-between w-full px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors disabled:opacity-50 cursor-pointer ${
+                  theme === "dark"
+                    ? "text-[#E8EDF2] hover:bg-[#1E293B] active:bg-[#2A3540]"
+                    : "text-[#141B2B] hover:bg-[#F1F5F9] active:bg-[#E2E8F0]"
+                }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {isTranslateAllLoading ? (
@@ -394,7 +427,9 @@ export function Header({
                   className={`px-2 py-0.5 rounded text-[11px] font-bold font-mono uppercase tracking-wider flex items-center gap-1 shrink-0 ml-2 ${
                     isTranslateAll
                       ? "bg-[#0F766E] text-white dark:bg-[#2DD4BF] dark:text-[#0F1419]"
-                      : "bg-[#E9EDFF] text-[#141B2B] dark:bg-[#2A3540] dark:text-[#E8EDF2]"
+                      : theme === "dark"
+                      ? "bg-[#2A3540] text-[#E8EDF2]"
+                      : "bg-[#E9EDFF] text-[#141B2B]"
                   }`}
                 >
                   {isTranslateAllLoading ? (
@@ -415,8 +450,11 @@ export function Header({
                   onRefresh();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center justify-between w-full px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B] active:bg-[#E2E8F0] dark:active:bg-[#334155] disabled:opacity-50 cursor-pointer"
-                style={{ color: "var(--color-text-primary)" }}
+                className={`flex items-center justify-between w-full px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors disabled:opacity-50 cursor-pointer ${
+                  theme === "dark"
+                    ? "text-[#E8EDF2] hover:bg-[#1E293B] active:bg-[#2A3540]"
+                    : "text-[#141B2B] hover:bg-[#F1F5F9] active:bg-[#E2E8F0]"
+                }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <RefreshCw
@@ -446,8 +484,11 @@ export function Header({
                   onToggleTheme();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center justify-between w-full px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B] active:bg-[#E2E8F0] dark:active:bg-[#334155] cursor-pointer"
-                style={{ color: "var(--color-text-primary)" }}
+                className={`flex items-center justify-between w-full px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                  theme === "dark"
+                    ? "text-[#E8EDF2] hover:bg-[#1E293B] active:bg-[#2A3540]"
+                    : "text-[#141B2B] hover:bg-[#F1F5F9] active:bg-[#E2E8F0]"
+                }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {theme === "dark" ? (
@@ -459,7 +500,13 @@ export function Header({
                     {theme === "dark" ? "Mode Terang" : "Mode Gelap"}
                   </span>
                 </div>
-                <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-[#E9EDFF] text-[#141B2B] dark:bg-[#2A3540] dark:text-[#E8EDF2] capitalize shrink-0 ml-2">
+                <span
+                  className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded capitalize shrink-0 ml-2 ${
+                    theme === "dark"
+                      ? "bg-[#2A3540] text-[#E8EDF2]"
+                      : "bg-[#E9EDFF] text-[#141B2B]"
+                  }`}
+                >
                   {theme === "dark" ? "Gelap" : "Terang"}
                 </span>
               </button>
@@ -491,9 +538,9 @@ export function Header({
                 )}
               </button>
             </div>
-          )}
-        </div>
-      </div>
+          </div>,
+          document.body
+        )}
     </header>
   );
 }
