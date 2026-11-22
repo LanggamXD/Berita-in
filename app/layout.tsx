@@ -17,8 +17,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Berita-in — Wikipedia Current Events",
-  description: "Personal daily news digest powered by Wikipedia Current Events.",
+  title: "Berita-in · Daily Briefing",
+  description: "Personal daily news digest from Wikipedia Current Events.",
+  robots: {
+    index: false,
+    follow: false,
+  },
   icons: {
     icon: "/favicon.ico",
   },
