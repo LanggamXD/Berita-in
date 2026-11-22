@@ -17,8 +17,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Berita-in · Daily Briefing",
-  description: "Personal daily news digest from Wikipedia Current Events.",
+  title: "Berita-in · Kasih tau berita setiap hari",
+  description: "Personal daily news from Wikipedia Current Events.",
   robots: {
     index: false,
     follow: false,
