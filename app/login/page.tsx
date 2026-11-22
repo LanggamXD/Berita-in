@@ -66,7 +66,7 @@ export default function LoginPage() {
               className="mt-1 text-sm"
               style={{ color: "var(--color-text-secondary)" }}
             >
-              Enter your password to continue
+              Masukan Password Untuk Melanjutkan
             </p>
           </div>
         </div>
