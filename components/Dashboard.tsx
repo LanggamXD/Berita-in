@@ -72,12 +72,13 @@ export function Dashboard() {
       if (i === 0) label = "Today";
       else if (i === 1) label = "Yesterday";
       else {
-        label = d.toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
+        const rawWeekday = d.toLocaleDateString("en-US", {
+          weekday: "long",
           timeZone: "UTC",
         });
+        const weekday = rawWeekday.charAt(0).toUpperCase() + rawWeekday.slice(1);
+        const day = d.getUTCDate();
+        label = `${weekday}, ${day}`;
       }
       dates.push({ date: iso, label });
     }
